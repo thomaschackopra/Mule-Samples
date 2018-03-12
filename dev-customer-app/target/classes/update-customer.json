@@ -1,0 +1,12 @@
+{ "id":1,
+  "first_name":"Thomas",
+  "last_name":"Chacko",
+  "address":{
+	 "suite":"Apt 22",
+	 "building_no":"127",
+	 "street":"Molesworth Street",
+	 "suburb":"Thorndon",
+	 "city":"Wellington",
+	 "country":"New Zealand"	
+  }
+}

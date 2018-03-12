@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:context="http://www.springframework.org/schema/context" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="customer-api-httpListenerConfig" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration" />
+    <apikit:config name="customer-api-config" raml="customer-api.raml" consoleEnabled="false" doc:name="Router" />
+    <context:property-placeholder location="customer-${env}.properties" />
+    <spring:beans>
+        <spring:bean id="customer-app-store" name="CustomerService" class="com.example.pra.CustomerService" />
+    </spring:beans>
+    <ee:object-store-caching-strategy name="Caching_Strategy" doc:name="Caching Strategy">
+        <in-memory-store name="CustomerObjectStore" maxEntries="20" entryTTL="300000" expirationInterval="300000" />
+    </ee:object-store-caching-strategy>
+    <flow name="customer-api-main">
+        <http:listener config-ref="customer-api-httpListenerConfig" path="/api/*" doc:name="HTTP" />
+        <set-variable variableName="resourceName" value="#[message.inboundProperties.'http.request.path'.split(&quot;/|\\?&quot;)[2]]" doc:name="Variable" />
+        <apikit:router config-ref="customer-api-config" doc:name="APIkit Router" />
+        <exception-strategy ref="customer-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy" />
+    </flow>
+    <flow name="customer-api-console">
+        <http:listener config-ref="customer-api-httpListenerConfig" path="/console/*" doc:name="HTTP" />
+        <apikit:console config-ref="customer-api-config" doc:name="APIkit Console" />
+    </flow>
+    
+    <flow name="put:/customer/{id}:customer-api-config">
+        <json:json-to-object-transformer returnClass="com.example.pra.Customer" doc:name="JSON to Object" />
+        <invoke name="UpdateCustomerBean" object-ref="customer-app-store" method="updateCustomer" methodArguments="#[payload]" methodArgumentTypes="com.example.pra.Customer" doc:name="UpdateCustomerBean" />
+        <json:object-to-json-transformer doc:name="Object to JSON" />
+        <flow-ref name="loggerFlow-implFlow" doc:name="loggerFlow-implFlow" />
+    </flow>
+    <flow name="delete:/customer/{id}:customer-api-config">
+        <invoke name="DeleteCustomerBean" object-ref="customer-app-store" method="deleteCustomerById" methodArguments="#[flowVars.id]" methodArgumentTypes="java.lang.Integer" doc:name="DeleteCustomerBean" />
+        <json:object-to-json-transformer doc:name="Object to JSON" />
+        <flow-ref name="loggerFlow-implFlow" doc:name="loggerFlow-implFlow" />
+    </flow>
+    <flow name="get:/customer:customer-api-config">
+       <ee:cache doc:name="Cache" cachingStrategy-ref="Caching_Strategy" filterExpression="#[message.inboundProperties.'http.query.params'.client_id == '${consumer.clientid}']">
+            <invoke name="GetCustomerListBean" object-ref="customer-app-store" method="getAllCustomers" doc:name="GetCustomerListBean" />
+            <json:object-to-json-transformer doc:name="Object to JSON" />
+        </ee:cache>
+        <flow-ref name="loggerFlow-implFlow" doc:name="loggerFlow-implFlow" />
+    </flow>
+    <flow name="get:/customer/{id}:customer-api-config">
+        <invoke name="GetCustomerByIdBean" object-ref="customer-app-store" method="getCustomerById" methodArguments="#[flowVars.id]" methodArgumentTypes="java.lang.Integer" doc:name="GetCustomerByIdBean" />
+        <json:object-to-json-transformer doc:name="Object to JSON" />
+        <flow-ref name="loggerFlow-implFlow" doc:name="loggerFlow-implFlow" />
+    </flow>
+    <flow name="post:/customer:customer-api-config">
+        <json:json-to-object-transformer returnClass="com.example.pra.Customer" doc:name="JSON to Object" />
+        <invoke name="CreateCustomerBean" object-ref="customer-app-store" method="createCustomer" methodArguments="#[payload]" methodArgumentTypes="com.example.pra.Customer" doc:name="CreateCustomerBean" />
+        <json:object-to-json-transformer doc:name="Object to JSON" />
+        <set-property propertyName="http.status" value="201" doc:name="Property" />
+        <flow-ref name="loggerFlow-implFlow" doc:name="loggerFlow-implFlow" />
+    </flow>
+    
+   
+    <flow name="loggerFlow-implFlow">
+        <logger message="Service Class Name : #[flowVars.resourceName].api.service.class" level="INFO" doc:name="Logger" />
+    </flow>
+    
+    <apikit:mapping-exception-strategy name="customer-api-apiKitGlobalExceptionMapping">
+        <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" doc:name="Set Payload" />
+        </apikit:mapping>
+    </apikit:mapping-exception-strategy>
+</mule>

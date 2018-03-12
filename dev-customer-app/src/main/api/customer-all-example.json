@@ -1,0 +1,26 @@
+{"customers" :[{"id":1,
+  "first_name":"Thomas",
+  "last_name":"Chacko",
+  "address":{
+	 "suite":"Apt 22",
+	 "building_no":"127",
+	 "street":"Molesworth Street",
+	 "suburb":"Thorndon",
+	 "city":"Wellington",
+	 "country":"New Zealand"
+  }	
+ },
+ {"id":2,
+  "first_name":"Cinu",
+  "last_name":"Thomas",
+  "address":{
+	 "suite":"Apt 23",
+	 "building_no":"127",
+	 "street":"Molesworth Street",
+	 "suburb":"Thorndon",
+	 "city":"Wellington",
+ 	 "country":"New Zealand"
+  }
+ }
+]}
+  

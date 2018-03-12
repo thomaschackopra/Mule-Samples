@@ -1,0 +1,102 @@
+#%RAML 1.0
+
+title: Customer
+baseUri: http://customer-app-tc.cloudhub.io/api
+description: |
+  This API will enable consumer applications to
+
+  - list customers
+  - create customer
+  - update existing customer
+  - delete customer
+version: '1.0'
+mediaType: application/json
+protocols:
+  - HTTP
+
+traits:
+  client-id-required:
+    queryParameters:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+
+resourceTypes: 
+  collection:
+    description: Collection of available  <<resourcePathName>> in thesystem
+    get:
+      is: [client-id-required]
+      description: Get a list of <<resourcePathName | !pluralize>> in the system
+      responses: 
+        200:
+          body: 
+            application/json:
+              example: |
+                <<exampleCollection>>
+              
+    post:
+      is: [client-id-required]
+      description: Create a new <<resourcePathName>> in the system
+      body: 
+        application/json:
+      responses: 
+        201:
+          body: 
+            application/json:
+              example: |
+                <<exampleItem>>
+  collection-item:
+    description: Entity representing a <<resourcePathName>>
+    get:
+      is: [client-id-required]
+      description: Get the <<resourcePathName>> with Id
+      responses: 
+        200:
+          body: 
+            application/json:
+              example: |
+                <<exampleItem>>
+    put:
+      is: [client-id-required]
+      description: Update a <<resourcePathName>> in the system
+      body:
+        application/json:
+          example: |
+            <<exampleItem>>
+      responses: 
+        200:
+          body:
+            application/json:
+              example: |
+                {"message":"<<resourcePathName|!singularize>> updated successfully"}
+
+    delete:
+      is: [client-id-required]
+      description: Delete a <<resourcePathName>> using id
+      responses: 
+        200:  
+          body:
+            application/json:
+              example: |
+                {"message" : "<<resourcePathName|!singularize>> Deleted Successfully"}
+
+/customer:
+  type:
+    collection:
+      exampleItem: !include create-customer.json
+      exampleCollection: !include customer-all-example.json
+  
+  /{id}:
+    type: 
+      collection-item:
+        exampleItem: !include customer-byId.json 
+
+
+      
+
+    
+
+
+
+    
